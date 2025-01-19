@@ -27,7 +27,7 @@
 
     @if($tryItOut['enabled'] ?? true)
         <script>
-            var baseUrl = "{{ $tryItOut['base_url'] ?? config('app.url') }}";
+            var tryItOutBaseUrl = "{{ $tryItOut['base_url'] ?? config('app.url') }}";
             var useCsrf = Boolean({{ $tryItOut['use_csrf'] ?? null }});
             var csrfUrl = "{{ $tryItOut['csrf_url'] ?? null }}";
         </script>
@@ -75,9 +75,9 @@
                 responsePanel.hidden = true;
 
                 let form = btnElement.form;
-                let { method, path, hasjsonbody } = form.dataset;
+                let { method, path, hasjsonbody: hasJsonBody} = form.dataset;
                 let body = {};
-                if (hasjsonbody === "1") {
+                if (hasJsonBody === "1") {
                     body = form.querySelector('.code-editor').textContent;
                 } else if (form.dataset.hasfiles === "1") {
                     body = new FormData();
@@ -111,6 +111,11 @@
                     });
                 }
 
+                // content type has to be unset otherwise file upload won't work
+                if (form.dataset.hasfiles === "1") {
+                    delete headers['Content-Type'];
+                }
+
                 return preflightPromise.then(() => makeAPICall(method, path, body, query, headers, endpointId))
                     .then(([responseStatus, statusText, responseContent, responseHeaders]) => {
                         responsePanel.hidden = false;
@@ -118,7 +123,7 @@
 
                         let contentEl = responsePanel.querySelector(`.response-content`);
                         if (responseContent === '') {
-                            contentEl.textContent = '<Empty response>'
+                            contentEl.textContent = contentEl.dataset.emptyResponseText;
                             return;
                         }
 
@@ -131,6 +136,9 @@
                                 responseContent = JSON.stringify(jsonParsed, null, 4);
                             }
                         } catch (e) {}
+
+                        // Replace HTML entities
+                        responseContent = responseContent.replace(/[<>&]/g, (i) => '&#' + i.charCodeAt(0) + ';');
 
                         contentEl.innerHTML = responseContent;
                         isJson && window.hljs.highlightElement(contentEl);
@@ -151,8 +159,6 @@
             })
         </script>
     @endif
-
-    <script src="{{ u::getVersionedAsset($assetPathPrefix.'js/theme-elements.js') }}"></script>
 
 </head>
 

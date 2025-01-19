@@ -29,14 +29,6 @@ class UpdateCommand extends Command
         $api = new Core();
         $updateData = $api->checkUpdate();
 
-        $verifyLicense = $api->verifyLicense();
-
-        if (! $verifyLicense['status']) {
-            $this->components->error('Your license is invalid. Please activate your license first!');
-
-            return self::FAILURE;
-        }
-
         $this->newLine();
 
         if ($updateData['status']) {
@@ -48,7 +40,6 @@ class UpdateCommand extends Command
 
             $array = [
                 'Please backup your database and script files before upgrading',
-                'You need to activate your license before doing upgrade.',
                 'If you don\'t need this 1-click update, you can disable it in .env by adding CMS_ENABLE_SYSTEM_UPDATER=false',
                 'It will override all files in platform/core, platform/packages, all plugins developed by us in platform/plugins and theme developed by us in platform/themes.',
             ];

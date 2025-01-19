@@ -9,9 +9,11 @@ use FastRoute\RouteParser\Std;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Knuckles\Scribe\Exceptions\CouldntFindFactory;
 use Knuckles\Scribe\Exceptions\CouldntGetRouteDetails;
+use Knuckles\Scribe\ScribeServiceProvider;
 use Knuckles\Scribe\Tools\ConsoleOutputUtils as c;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -190,6 +192,11 @@ class Utils
         }
     }
 
+    public static function makeDirectoryRecursive(string $dir): void
+    {
+        File::isDirectory($dir) || File::makeDirectory($dir, 0777, true, true);
+    }
+
     public static function deleteFilesMatching(string $dir, callable $condition): void
     {
         if (class_exists(LocalFilesystemAdapter::class)) {
@@ -353,6 +360,32 @@ class Utils
         );
     }
 
+    /**
+     * Like Laravel's trans/__ function, but will fallback to using the default translation if translation fails.
+     * For instance, if the user's locale is DE, but they have no DE strings defined,
+     * Laravel simply renders the translation key.
+     * Instead, we render the EN version.
+     */
+    public static function trans(string $key, array $replace = [])
+    {
+        // We only load our custom translation layer if we really need it
+        if (!ScribeServiceProvider::$customTranslationLayerLoaded) {
+            app(ScribeServiceProvider::class, ['app' => app()])->loadCustomTranslationLayer();
+        }
+
+        $translation = trans($key, $replace);
+
+        if ($translation === $key || $translation === null) {
+            $translation = trans($key, $replace, 'en');
+        }
+
+
+        if ($translation === $key) {
+            throw new \Exception("Translation not found for $key. You can add a translation for this in your `lang/scribe.php`, but this is likely a problem with the package. Please open an issue.");
+        }
+
+        return $translation;
+    }
 }
 
 function getTopLevelItemsFromMixedOrderList(array $mixedList): array

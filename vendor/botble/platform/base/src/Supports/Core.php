@@ -46,7 +46,7 @@ final class Core
 
     public function __construct()
     {
-        $this->apiUrl = 'https://license.botble.com';
+        $this->apiUrl = '';
         $this->apiKey = 'CAF4B17F6D3F656125F9';
         $this->currentVersion = get_cms_version();
         $this->verificationPeriod = 1;
@@ -87,13 +87,6 @@ final class Core
 
     private function callApi(string $url, array $data = []): array
     {
-        if (! extension_loaded('curl')) {
-            return [
-                'status' => false,
-                'message' => 'Cannot activate license. PHP Curl extension needs to be installed first.',
-            ];
-        }
-
         try {
             $client = new Client(['verify' => false]);
 

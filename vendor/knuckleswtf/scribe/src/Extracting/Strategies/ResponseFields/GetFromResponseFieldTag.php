@@ -4,6 +4,8 @@ namespace Knuckles\Scribe\Extracting\Strategies\ResponseFields;
 
 use Knuckles\Scribe\Extracting\Shared\ResponseFieldTools;
 use Knuckles\Scribe\Extracting\Strategies\GetFieldsFromTagStrategy;
+use Knuckles\Scribe\Extracting\Strategies\Responses\UseApiResourceTags;
+use Knuckles\Scribe\Tools\AnnotationParser as a;
 use Mpociot\Reflection\DocBlock;
 use Knuckles\Scribe\Tools\Utils as u;
 
@@ -14,22 +16,28 @@ class GetFromResponseFieldTag extends GetFieldsFromTagStrategy
     protected function parseTag(string $tagContent): array
     {
         // Format:
-        // @responseField <name> <type> <description>
+        // @responseField <name> <type> <"required" (optional)> <description>
         // Examples:
-        // @responseField text string The text.
+        // @responseField text string required The text.
         // @responseField user_id integer The ID of the user.
-        preg_match('/(.+?)\s+(.+?)\s+([\s\S]*)/', $tagContent, $content);
+        preg_match('/(.+?)\s+(.+?)\s+(.+?)\s+([\s\S]*)/', $tagContent, $content);
         if (empty($content)) {
             // This means only name and type were supplied
             [$name, $type] = preg_split('/\s+/', $tagContent);
             $description = '';
+            $required = false;
         } else {
-            [$_, $name, $type, $description] = $content;
+            [$_, $name, $type, $required, $description] = $content;
+            if($required !== "required"){
+                $description = $required . " " . $description;
+            }
+            
+            $required = $required === "required";
             $description = trim($description);
         }
 
         $type = static::normalizeTypeName($type);
-        $data = compact('name', 'type', 'description');
+        $data = compact('name', 'type', 'required', 'description');
 
         // Support optional type in annotation
         // The type can also be a union or nullable type (eg ?string or string|null)
@@ -66,18 +74,9 @@ class GetFromResponseFieldTag extends GetFieldsFromTagStrategy
         return parent::getFromTags(array_merge($tagsOnMethod, $tagsOnApiResource ?? []), $tagsOnClass);
     }
 
-    /**
-     * An API resource tag may contain a status code before the class name,
-     * so this method parses out the class name.
-     */
     public function getClassNameFromApiResourceTag(string $apiResourceTag): string
     {
-        if (!str_contains($apiResourceTag, ' ')) {
-            return $apiResourceTag;
-        }
-
-        $exploded = explode(' ', $apiResourceTag);
-
-        return $exploded[count($exploded) - 1];
+        ['content' => $className] = a::parseIntoContentAndFields($apiResourceTag, UseApiResourceTags::apiResourceAllowedFields());
+        return $className;
     }
 }

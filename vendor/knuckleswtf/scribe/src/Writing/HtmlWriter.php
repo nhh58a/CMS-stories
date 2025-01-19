@@ -9,6 +9,7 @@ use Knuckles\Camel\Output\OutputEndpointData;
 use Knuckles\Scribe\Tools\DocumentationConfig;
 use Knuckles\Scribe\Tools\MarkdownParser;
 use Knuckles\Scribe\Tools\Utils;
+use Knuckles\Scribe\Tools\Utils as u;
 use Knuckles\Scribe\Tools\WritingUtils;
 
 /**
@@ -21,7 +22,7 @@ class HtmlWriter
     protected string $assetPathPrefix;
     protected MarkdownParser $markdownParser;
 
-    public function __construct(DocumentationConfig $config = null)
+    public function __construct(?DocumentationConfig $config = null)
     {
         $this->config = $config ?: new DocumentationConfig(config('scribe', []));
         $this->markdownParser = new MarkdownParser();
@@ -29,7 +30,7 @@ class HtmlWriter
         // If they're using the default static path,
         // then use '../docs/{asset}', so assets can work via Laravel app or via index.html
         $this->assetPathPrefix = '../docs/';
-        if ($this->config->get('type') == 'static'
+        if (in_array($this->config->get('type'), ['static', 'external_static'])
             && rtrim($this->config->get('static.output_path', ''), '/') != 'public/docs'
         ) {
             $this->assetPathPrefix = './';
@@ -112,11 +113,11 @@ class HtmlWriter
 
         // NB:These paths are wrong for laravel type but will be set correctly by the Writer class
         if ($this->config->get('postman.enabled', true)) {
-            $links[] = "<a href=\"{$this->assetPathPrefix}collection.json\">View Postman collection</a>";
+            $links[] = "<a href=\"{$this->assetPathPrefix}collection.json\">".u::trans("scribe::links.postman")."</a>";
             $postmanCollectionUrl = "{$this->assetPathPrefix}collection.json";
         }
         if ($this->config->get('openapi.enabled', false)) {
-            $links[] = "<a href=\"{$this->assetPathPrefix}openapi.yaml\">View OpenAPI spec</a>";
+            $links[] = "<a href=\"{$this->assetPathPrefix}openapi.yaml\">".u::trans("scribe::links.openapi")."</a>";
             $openApiSpecUrl = "{$this->assetPathPrefix}openapi.yaml";
         }
 

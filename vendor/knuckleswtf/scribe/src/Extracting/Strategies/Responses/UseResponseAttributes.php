@@ -13,6 +13,7 @@ use Knuckles\Scribe\Extracting\ParamHelpers;
 use Knuckles\Scribe\Extracting\Shared\ApiResourceResponseTools;
 use Knuckles\Scribe\Extracting\Shared\TransformerResponseTools;
 use Knuckles\Scribe\Extracting\Strategies\PhpAttributeStrategy;
+use Knuckles\Scribe\Tools\ConsoleOutputUtils as c;
 use ReflectionClass;
 
 /**
@@ -37,11 +38,11 @@ class UseResponseAttributes extends PhpAttributeStrategy
         $responses = [];
         foreach ([...$attributesOnController, ...$attributesOnFormRequest, ...$attributesOnMethod] as $attributeInstance) {
             /* @phpstan-ignore-next-line */
-            $responses[] = match (get_class($attributeInstance)) {
-                Response::class => $attributeInstance->toArray(),
-                ResponseFromFile::class => $attributeInstance->toArray(),
-                ResponseFromApiResource::class => $this->getApiResourceResponse($attributeInstance),
-                ResponseFromTransformer::class => $this->getTransformerResponse($attributeInstance),
+            $responses[] = match (true) {
+                $attributeInstance instanceof Response => $attributeInstance->toArray(),
+                $attributeInstance instanceof ResponseFromFile => $attributeInstance->toArray(),
+                $attributeInstance instanceof ResponseFromApiResource => $this->getApiResourceResponse($attributeInstance),
+                $attributeInstance instanceof ResponseFromTransformer => $this->getTransformerResponse($attributeInstance),
             };
         }
 
@@ -50,19 +51,31 @@ class UseResponseAttributes extends PhpAttributeStrategy
 
     protected function getApiResourceResponse(ResponseFromApiResource $attributeInstance)
     {
-        $modelInstantiator = fn() => $this->instantiateExampleModel($attributeInstance->model, $attributeInstance->factoryStates, $attributeInstance->with);
+        $modelToBeTransformed = $attributeInstance->modelToBeTransformed();
+        if (empty($modelToBeTransformed)) {
+            c::warn(<<<WARN
+                Couldn't detect an Eloquent API resource model from your ResponseFromApiResource.
+                Either specify a model using the `model:` parameter, or add an `@mixin` annotation in your resource's docblock.
+                WARN
+            );
+            $modelInstantiator = null;
+        } else {
+            $modelInstantiator = fn() => $this->instantiateExampleModel($modelToBeTransformed, $attributeInstance->factoryStates, $attributeInstance->with);
+        }
 
         $pagination = [];
         if ($attributeInstance->paginate) {
             $pagination = [$attributeInstance->paginate];
         } else if ($attributeInstance->simplePaginate) {
             $pagination = [$attributeInstance->simplePaginate, 'simple'];
+        } else if ($attributeInstance->cursorPaginate) {
+            $pagination = [$attributeInstance->cursorPaginate, 'cursor'];
         }
 
 
         $this->startDbTransaction();
         $content = ApiResourceResponseTools::fetch(
-            $attributeInstance->name, $attributeInstance->collection, $modelInstantiator,
+            $attributeInstance->name, $attributeInstance->isCollection(), $modelInstantiator,
             $this->endpointData, $pagination, $attributeInstance->additional,
         );
         $this->endDbTransaction();

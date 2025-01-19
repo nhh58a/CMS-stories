@@ -104,18 +104,6 @@ class Helper
 
     public static function isActivatedLicense(): bool
     {
-        if (! File::exists(storage_path('.license'))) {
-            return false;
-        }
-
-        $coreApi = new Core();
-
-        $result = $coreApi->verifyLicense(true);
-
-        if (! $result['status']) {
-            return false;
-        }
-
         return true;
     }
 

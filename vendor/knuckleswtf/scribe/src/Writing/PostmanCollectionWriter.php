@@ -21,7 +21,7 @@ class PostmanCollectionWriter
 
     protected string $baseUrl;
 
-    public function __construct(DocumentationConfig $config = null)
+    public function __construct(?DocumentationConfig $config = null)
     {
         $this->config = $config ?: new DocumentationConfig(config('scribe', []));
         $this->baseUrl = $this->config->get('base_url') ?: config('app.url');
@@ -80,7 +80,6 @@ class PostmanCollectionWriter
                 'bearer' => [
                     [
                         'key'   => $this->config->get('auth.name'),
-                        'value' => $this->config->get('auth.use_value'),
                         'type'  => 'string',
                     ],
                 ],
@@ -223,7 +222,7 @@ class PostmanCollectionWriter
             if (!is_array($value)) {
                 $body[] = [
                     'key' => $index,
-                    'value' => $value,
+                    'value' => (string) $value,
                     'type' => 'text',
                     'description' => $paramsFullDetails[$index]->description ?? '',
                 ];
@@ -293,11 +292,21 @@ class PostmanCollectionWriter
                     // Going with the first to also support object query parameters
                     // See https://www.php.net/manual/en/function.parse-str.php
                     $query[] = [
-                        'key' => urlencode("{$name}[$index]"),
-                        'value' => urlencode($value),
+                        'key' => "{$name}[$index]",
+                        'value' => is_string($value) ? $value : strval($value),
                         'description' => strip_tags($parameterData->description),
                         // Default query params to disabled if they aren't required and have empty values
                         'disabled' => !$parameterData->required && empty($parameterData->example),
+                    ];
+                }
+                // If there are no values, add one entry so the parameter shows up in the Postman UI.
+                if (empty($values)) {
+                    $query[] = [
+                        'key' => "{$name}[]",
+                        'value' => '',
+                        'description' => strip_tags($parameterData->description),
+                        // Default query params to disabled if they aren't required and have empty values
+                        'disabled' => true,
                     ];
                 }
             } else {

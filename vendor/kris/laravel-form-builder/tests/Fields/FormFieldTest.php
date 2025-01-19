@@ -1,8 +1,9 @@
 <?php
 
 use Illuminate\Http\Request;
-use Kris\LaravelFormBuilder\FormHelper;
+use Kris\LaravelFormBuilder\Fields\CheckableType;
 use Kris\LaravelFormBuilder\Fields\InputType;
+use Kris\LaravelFormBuilder\FormHelper;
 
 class FormFieldTest extends FormBuilderTestCase
 {
@@ -21,9 +22,7 @@ class FormFieldTest extends FormBuilderTestCase
     /** @test */
     public function it_uses_the_template_prefix()
     {
-        $viewStub = $this->getMockBuilder('Illuminate\View\Factory')->setMethods(['make', 'with', 'render'])->disableOriginalConstructor()->getMock();
-        $viewStub->method('make')->willReturn($viewStub);
-        $viewStub->method('with')->willReturn($viewStub);
+        $viewStub = $this->getViewFactoryMock();
 
         $helper = new FormHelper($viewStub, $this->translator, $this->config);
 
@@ -119,13 +118,33 @@ class FormFieldTest extends FormBuilderTestCase
         $text = new InputType('field_name', 'text', $this->plainForm, $options);
         $renderResult = $text->render();
 
-        $this->assertMatchesRegularExpression('/appended/', $text->getOption('attr.class'));
+        $this->assertMatchesRegularExpression('/\bappended\b/', $text->getOption('attr.class'));
 
         $defaultClasses = $this->config['defaults']['field_class'];
         $this->assertEquals('form-control appended', $text->getOption('attr.class'));
 
         $this->assertStringContainsString($defaultClasses, $text->getOption('attr.class'));
         $this->assertStringNotContainsString('class_append', $renderResult);
+    }
+
+    /** @test */
+    public function it_appends_to_the_class_attribute_of_a_custom_classes_checkbox_field()
+    {
+        $options = [
+            'attr' => [
+                'class_append' => 'appended',
+            ],
+        ];
+
+        $text = new CheckableType('field_name', 'checkbox', $this->plainForm, $options);
+        $renderResult = $text->render();
+
+        $this->assertMatchesRegularExpression('/\bappended\b/', $text->getOption('attr.class'));
+
+        $this->assertEquals('custom-checkbox-field-class appended', $text->getOption('attr.class'));
+
+        $defaultClasses = $this->config['defaults']['field_class'];
+        $this->assertStringNotContainsString($defaultClasses, $text->getOption('attr.class'));
     }
 
     /** @test */
@@ -140,7 +159,7 @@ class FormFieldTest extends FormBuilderTestCase
         $text = new InputType('field_name', 'text', $this->plainForm, $options);
         $renderResult = $text->render();
 
-        $this->assertMatchesRegularExpression('/appended/', $text->getOption('label_attr.class'));
+        $this->assertMatchesRegularExpression('/\bappended\b/', $text->getOption('label_attr.class'));
 
         $defaultClasses = $this->config['defaults']['label_class'];
         $this->assertEquals('control-label appended', $text->getOption('label_attr.class'));
@@ -161,7 +180,7 @@ class FormFieldTest extends FormBuilderTestCase
         $text = new InputType('field_name', 'text', $this->plainForm, $options);
         $renderResult = $text->render();
 
-        $this->assertMatchesRegularExpression('/appended/', $text->getOption('wrapper.class'));
+        $this->assertMatchesRegularExpression('/\bappended\b/', $text->getOption('wrapper.class'));
 
         $defaultClasses = $this->config['defaults']['wrapper_class'];
         $this->assertEquals('form-group appended', $text->getOption('wrapper.class'));
@@ -212,7 +231,7 @@ class FormFieldTest extends FormBuilderTestCase
         $this->plainForm->setLanguageName('validation')->add('accepted', 'text');
 
         $this->assertEquals(
-            'The :attribute must be accepted.',
+            'The :attribute field must be accepted.',
             $this->plainForm->accepted->getOption('label')
         );
     }
@@ -225,7 +244,7 @@ class FormFieldTest extends FormBuilderTestCase
         $this->plainForm->setTranslationTemplate('validation.{name}')->add('accepted', 'text');
 
         $this->assertEquals(
-            'The :attribute must be accepted.',
+            'The :attribute field must be accepted.',
             $this->plainForm->accepted->getOption('label')
         );
     }
@@ -479,7 +498,7 @@ class FormFieldTest extends FormBuilderTestCase
                 'options' => [
                     'label' => 'Text Field #1',
                     'label_show' => true,
-                    'label_template' => 'laravel-form-builder-test::test-label',        
+                    'label_template' => 'laravel-form-builder-test::test-label',
                 ]
             ],
             [
@@ -488,10 +507,10 @@ class FormFieldTest extends FormBuilderTestCase
                 'options' => [
                     'label' => 'Textarea Field #1',
                     'label_show' => true,
-                    'label_template' => 'laravel-form-builder-test::test-label',        
+                    'label_template' => 'laravel-form-builder-test::test-label',
                 ]
             ],
-        
+
         ];
 
         foreach ($fieldsOptions as $config) {

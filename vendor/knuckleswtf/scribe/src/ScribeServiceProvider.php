@@ -3,6 +3,7 @@
 namespace Knuckles\Scribe;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Knuckles\Scribe\Commands\DiffConfig;
 use Knuckles\Scribe\Commands\GenerateDocumentation;
 use Knuckles\Scribe\Commands\MakeStrategy;
@@ -11,9 +12,12 @@ use Knuckles\Scribe\Matching\RouteMatcher;
 use Knuckles\Scribe\Matching\RouteMatcherInterface;
 use Knuckles\Scribe\Tools\BladeMarkdownEngine;
 use Knuckles\Scribe\Tools\Utils;
+use Knuckles\Scribe\Writing\CustomTranslationsLoader;
 
 class ScribeServiceProvider extends ServiceProvider
 {
+    public static bool $customTranslationLayerLoaded = false;
+
     public function boot()
     {
         $this->registerViews();
@@ -23,6 +27,8 @@ class ScribeServiceProvider extends ServiceProvider
         $this->bootRoutes();
 
         $this->registerCommands();
+
+        $this->configureTranslations();
 
         // Bind the route matcher implementation
         $this->app->bind(RouteMatcherInterface::class, config('scribe.routeMatcher', RouteMatcher::class));
@@ -39,12 +45,22 @@ class ScribeServiceProvider extends ServiceProvider
     protected function bootRoutes()
     {
         if (
-            config('scribe.type', 'static') === 'laravel' &&
+            Str::endsWith(config('scribe.type', 'static'), 'laravel') &&
             config('scribe.laravel.add_routes', false)
         ) {
             $routesPath = Utils::isLumen() ? __DIR__ . '/../routes/lumen.php' : __DIR__ . '/../routes/laravel.php';
             $this->loadRoutesFrom($routesPath);
         }
+    }
+
+    protected function configureTranslations(): void
+    {
+        $this->publishes([
+            __DIR__ . '/../lang/' => $this->app->langPath(),
+        ], 'scribe-translations');
+
+        $this->loadTranslationsFrom($this->app->langPath('scribe.php'), 'scribe');
+        $this->loadTranslationsFrom(realpath(__DIR__ . '/../lang'), 'scribe');
     }
 
     protected function registerViews(): void
@@ -62,6 +78,7 @@ class ScribeServiceProvider extends ServiceProvider
             'examples' => 'partials/example-requests',
             'themes' => 'themes',
             'markdown' => 'markdown',
+            'external' => 'external',
         ];
         foreach ($viewGroups as $group => $path) {
             $this->publishes([
@@ -77,6 +94,12 @@ class ScribeServiceProvider extends ServiceProvider
         ], 'scribe-config');
 
         $this->mergeConfigFrom(__DIR__ . '/../config/scribe.php', 'scribe');
+        // This is really only used in internal testing,
+        // but we also make it publishable for easy migration, so there's no .
+        $this->publishes([
+            __DIR__ . '/../config/scribe.php' => $this->app->configPath('scribe.php'),
+        ], 'scribe-config');
+        $this->mergeConfigFrom(__DIR__ . '/../config/scribe_new.php', 'scribe_new');
     }
 
     protected function registerCommands(): void
@@ -89,5 +112,17 @@ class ScribeServiceProvider extends ServiceProvider
                 DiffConfig::class,
             ]);
         }
+    }
+
+    // Allows our custom translation layer to be loaded on demand,
+    // so we minimize issues with interference from framework/package/environment.
+    // ALso, Laravel's `app->runningInConsole()` isn't reliable enough. See issue #676
+    public function loadCustomTranslationLayer(): void
+    {
+        $this->app->extend('translation.loader', function ($defaultFileLoader) {
+            return app(CustomTranslationsLoader::class, ['loader' => $defaultFileLoader]);
+        });
+        $this->app->forgetInstance('translator');
+        self::$customTranslationLayerLoaded = true;
     }
 }

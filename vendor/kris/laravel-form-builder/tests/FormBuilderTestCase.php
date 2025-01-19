@@ -186,6 +186,9 @@ abstract class FormBuilderTestCase extends TestCase {
         parent::setUp();
 
         $this->withoutDeprecationHandling();
+
+        $this->app['path.lang'] = __DIR__ . '/resources/lang';
+
         // add views for testing
         $this->app['view']->addNamespace('laravel-form-builder-test', __DIR__ . '/resources/views');
 
@@ -196,7 +199,10 @@ abstract class FormBuilderTestCase extends TestCase {
         $this->validatorFactory = $this->app['validator'];
         $this->eventDispatcher = $this->app['events'];
         $this->model = new TestModel();
-        $this->config = include __DIR__.'/../src/config/config.php';
+
+        $config = include __DIR__.'/../src/config/config.php';
+        $config['defaults']['checkbox']['field_class'] = 'custom-checkbox-field-class';
+        $this->config = $config;
 
         $this->formHelper = new FormHelper($this->view, $this->translator, $this->config);
         $this->formBuilder = new FormBuilder($this->app, $this->formHelper, $this->eventDispatcher);
@@ -266,5 +272,17 @@ abstract class FormBuilderTestCase extends TestCase {
     protected function assertIdentical($one, $two): void
     {
         self::assertThat($one, new IsIdentical($two));
+    }
+
+    protected function getViewFactoryMock()
+    {
+        $mock = $this->getMockBuilder('Illuminate\View\Factory')
+            ->onlyMethods(['make'])
+            ->addMethods(['with', 'render'])
+            ->disableOriginalConstructor()
+            ->getMock();
+        $mock->method('make')->willReturn($mock);
+        $mock->method('with')->willReturn($mock);
+        return $mock;
     }
 }

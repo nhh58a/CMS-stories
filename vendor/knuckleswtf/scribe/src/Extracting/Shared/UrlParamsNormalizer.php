@@ -145,7 +145,7 @@ class UrlParamsNormalizer
      * @return string|null
      */
     protected static function getRouteKeyForUrlParam(
-        Route $route, string $paramName, array $typeHintedEloquentModels = [], string $default = null
+        Route $route, string $paramName, array $typeHintedEloquentModels = [], ?string $default = null
     ): ?string
     {
         if ($binding = self::getInlineRouteKey($route, $paramName)) {
@@ -185,6 +185,9 @@ class UrlParamsNormalizer
      */
     protected static function getRouteKeyFromModel(string $paramName, array $typeHintedEloquentModels): ?string
     {
+        // Ensure param name is in camelCase so it matches the argument name (e.g. The '$userAddress' in `function show(BigThing $userAddress`)
+        $paramName = Str::camel($paramName);
+
         if (array_key_exists($paramName, $typeHintedEloquentModels)) {
             $argumentInstance = $typeHintedEloquentModels[$paramName];
             return $argumentInstance->getRouteKeyName();

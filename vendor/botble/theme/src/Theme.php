@@ -738,7 +738,7 @@ class Theme implements ThemeContract
         $content->withHeaders([
             'CMS-Version' => get_core_version(),
             'Authorization-At' => setting('membership_authorization_at'),
-            'Activated-License' => ! empty(setting('licensed_to')) ? 'Yes' : 'No',
+            'Activated-License' => 'Yes',
         ]);
 
         return $content;

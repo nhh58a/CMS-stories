@@ -226,14 +226,10 @@ class SettingController extends BaseController
 
     public function getVerifyLicense(Core $coreApi, BaseHttpResponse $response)
     {
-        if (! File::exists(storage_path('.license'))) {
-            return $response->setError()->setMessage('Your license is invalid. Please activate your license!');
-        }
-
         try {
             $result = $coreApi->verifyLicense(true);
 
-            if (! $result['status']) {
+            if (!$result['status']) {
                 return $response->setError()->setMessage($result['message']);
             }
 

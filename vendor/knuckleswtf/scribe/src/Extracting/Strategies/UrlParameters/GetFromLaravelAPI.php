@@ -17,7 +17,9 @@ class GetFromLaravelAPI extends Strategy
 
     public function __invoke(ExtractedEndpointData $endpointData, array $routeRules = []): ?array
     {
-        if (Utils::isLumen()) return null;
+        if (Utils::isLumen()) {
+            return (new GetFromLumenAPI($this->config))($endpointData, $routeRules);
+        };
 
         $parameters = [];
 
@@ -184,7 +186,7 @@ class GetFromLaravelAPI extends Strategy
      *
      * @return string|null
      */
-    protected function getNameOfUrlThing(string $url, string $paramName, string $alternateParamName = null): ?string
+    protected function getNameOfUrlThing(string $url, string $paramName, ?string $alternateParamName = null): ?string
     {
         $parts = explode("/", $url);
         if (count($parts) === 1) return null; // URL was "/{thing}"
@@ -214,9 +216,9 @@ class GetFromLaravelAPI extends Strategy
         $className = str_replace(['-', '_', ' '], '', Str::title($urlThing));
         $rootNamespace = app()->getNamespace();
 
-        if (class_exists($class = "{$rootNamespace}Models\\" . $className)
+        if (class_exists($class = "{$rootNamespace}Models\\" . $className, autoload: false)
             // For the heathens that don't use a Models\ directory
-            || class_exists($class = $rootNamespace . $className)) {
+            || class_exists($class = $rootNamespace . $className, autoload: false)) {
             try {
                 $instance = new $class;
             } catch (\Error) { // It might be an enum or some other non-instantiable class
